@@ -48,22 +48,20 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child:  Column(
-          children: [
-            PinchZoom(
-              child: Image.network('https://placekitten.com/640/360'),
-              maxScale: 2.5,
-              onZoomStart: (){print('Start zooming cat');},
-              onZoomEnd: (){print('Stop zooming cat');},
-            ),
-            PinchZoom(
-              child: Image.network('https://placedog.net/640/360'),
-              maxScale: 2.5,
-              onZoomStart: (){print('Start zooming dog');},
-              onZoomEnd: (){print('Stop zooming dog');},
-            ),
-          ],
+      body: GestureDetector(
+        onVerticalDragUpdate: (details) {
+          int sensitivity = 8;
+          if (details.delta.dy > sensitivity) {
+            print("dy swiped");
+            // Down Swipe
+          } else if(details.delta.dy < -sensitivity){
+            print("dy swiped -");
+          }
+        },
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height,
+
         ),
       ),
       floatingActionButton: FloatingActionButton(
