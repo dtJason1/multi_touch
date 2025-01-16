@@ -66,11 +66,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: [
                       // 원형 컨테이너
                       Container(
-                        width: 100,
-                        height: 100,
+                        width: 300,
+                        height: 300,
                         decoration: BoxDecoration(
                           color: Colors.blue,
-                          borderRadius: BorderRadius.circular(50),
+                          borderRadius: BorderRadius.circular(300),
                         ),
                       ),
                       // 표시를 위한 상단 부분
