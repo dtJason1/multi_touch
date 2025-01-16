@@ -1,5 +1,5 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,144 +11,122 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Two-Finger Swipe Detection',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const SwipeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  final String title;
+class SwipeScreen extends StatefulWidget {
+  const SwipeScreen({Key? key}) : super(key: key);
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<SwipeScreen> createState() => _SwipeScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  TouchCallbacks touchCallbacks = TouchCallbacks();
+class _SwipeScreenState extends State<SwipeScreen> {
+  String swipeDirection = "No Swipe Detected";
+  Offset firstFingerPosition = Offset.zero;
+  Offset secondFingerPosition = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(touchCallbacks.taps.length.toString()),
+        title: const Text("Two-Finger Swipe Detection"),
       ),
-      body: Stack(
-        children: [
-          Positioned(
-            left: touchCallbacks.taps.length == 3
-                ? touchCallbacks.taps.first.offset.dx
-                : 200,
-            top: touchCallbacks.taps.length == 3
-                ? touchCallbacks.taps.first.offset.dy
-                : 200,
-            child: Container(
-              height: 100,
-              width: 100,
-              color: Colors.red,
-            ),
-          ),
-          RawGestureDetector(
-            gestures: <Type, GestureRecognizerFactory>{
-              ImmediateMultiDragGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<
-                  ImmediateMultiDragGestureRecognizer>(
-                      () => ImmediateMultiDragGestureRecognizer(),
-                      (ImmediateMultiDragGestureRecognizer instance) {
-                    instance.onStart = (Offset offset) {
-                      setState(() {
-                        _counter++;
-                        touchCallbacks.touchBegan(TouchData(_counter, offset));
-                      });
-                      return ItemDrag((details, tId) {
-                        setState(() {
-                          touchCallbacks
-                              .touchMoved(TouchData(tId, details.globalPosition));
-                        });
-                      }, (details, tId) {
-                        touchCallbacks
-                            .touchEnded(TouchData(tId, const Offset(0, 0)));
-                      }, (tId) {
-                        touchCallbacks
-                            .touchCanceled(TouchData(tId, const Offset(0, 0)));
-                      }, _counter);
-                    };
-                  }),
+      body: RawGestureDetector(
+        gestures: {
+          MultiTouchGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+              MultiTouchGestureRecognizer>(
+                () => MultiTouchGestureRecognizer(),
+                (MultiTouchGestureRecognizer instance) {
+              instance.onUpdate = (positions) {
+                if (positions.length == 2) {
+                  firstFingerPosition = positions[0];
+                  secondFingerPosition = positions[1];
+
+                  final deltaX = secondFingerPosition.dx - firstFingerPosition.dx;
+                  final deltaY = secondFingerPosition.dy - firstFingerPosition.dy;
+
+                  setState(() {
+                    if (deltaY.abs() > deltaX.abs()) {
+                      swipeDirection =
+                      deltaY > 0 ? "Two-Finger Swipe Down" : "Two-Finger Swipe Up";
+                    } else {
+                      swipeDirection =
+                      deltaX > 0 ? "Two-Finger Swipe Right" : "Two-Finger Swipe Left";
+                    }
+                  });
+                }
+              };
+
+              instance.onEnd = () {
+                setState(() {
+                  swipeDirection = "No Swipe Detected";
+                });
+              };
             },
           ),
-        ],
+        },
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                swipeDirection,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                height: 300,
+                width: 300,
+                color: Colors.grey[300],
+                child: Center(
+                  child: const Text(
+                    "Use Two Fingers to Swipe",
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-/// Just saving the taps information here
-class TouchCallbacks {
-  List<TouchData> taps = []; //list that holds ongoing taps or drags
-  void touchBegan(TouchData touch) {
-    taps.add(touch);
-    //touch began code here
+class MultiTouchGestureRecognizer extends OneSequenceGestureRecognizer {
+  Function(List<Offset>)? onUpdate;
+  Function? onEnd;
+  final Map<int, Offset> activeTouches = {};
+
+  @override
+  void addAllowedPointer(PointerEvent event) {
+    startTrackingPointer(event.pointer);
+    activeTouches[event.pointer] = event.position;
   }
 
-  void touchMoved(TouchData touch) {
-    for (int i = 0; i < taps.length; i++) {
-      if (taps[i].touchId == touch.touchId) {
-        taps[i] = touch;
-        break;
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent) {
+      activeTouches[event.pointer] = event.position;
+      if (onUpdate != null) {
+        onUpdate!(activeTouches.values.toList());
+      }
+    } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      activeTouches.remove(event.pointer);
+      if (activeTouches.isEmpty && onEnd != null) {
+        onEnd!();
       }
     }
-    //touch moved code here
-  }
-
-  void touchCanceled(TouchData touch) {
-    //touch canceled code here
-    taps.removeWhere((element) => element.touchId == touch.touchId);
-  }
-
-  void touchEnded(TouchData touch) {
-    //touch ended code here
-    taps.removeWhere((element) => element.touchId == touch.touchId);
-  }
-}
-
-///Every touch point must have the touch id, here touch id will be every offset on the screen
-///until finger has not left i.e., until drag doesn't end.
-class TouchData {
-  final int touchId;
-  final Offset offset;
-
-  TouchData(this.touchId, this.offset);
-}
-
-class ItemDrag extends Drag {
-  final Function onUpdate;
-  final Function onEnd;
-  final Function onCancel;
-  final int touchId;
-
-  ItemDrag(this.onUpdate, this.onEnd, this.onCancel, this.touchId);
-
-  @override
-  void update(DragUpdateDetails details) {
-    super.update(details);
-    onUpdate(details, touchId);
   }
 
   @override
-  void end(DragEndDetails details) {
-    super.end(details);
-    onEnd(details, touchId);
-  }
+  String get debugDescription => 'MultiTouchGestureRecognizer';
 
   @override
-  void cancel() {
-    super.cancel();
-    onCancel(touchId);
-  }
+  void didStopTrackingLastPointer(int pointer) {}
 }
