@@ -43,6 +43,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 () => MultiTouchGestureRecognizer(),
                 (MultiTouchGestureRecognizer instance) {
               instance.onUpdate = (positions) {
+                print("$instance instance");
+                print("$positions positions");
                 if (positions.length == 2) {
                   firstFingerPosition = positions[0];
                   secondFingerPosition = positions[1];
