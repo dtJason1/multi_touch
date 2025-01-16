@@ -1,74 +1,154 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:touch_indicator/touch_indicator.dart';
-import 'package:pinch_zoom/pinch_zoom.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      builder: (context, child) => TouchIndicator(child: child!, forceInReleaseMode: true,),
-      home: TouchIndicator(
-        // forceInReleaseMode: true,
-        // enabled: true,
-        // indicatorSize: 80,
-        // indicatorColor: Colors.deepOrange,
-        child: MyHomePage(
-          title: 'Flutter Demo Home Page',
-        ),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, required this.title}) : super(key: key);
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
+  TouchCallbacks touchCallbacks = TouchCallbacks();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text(touchCallbacks.taps.length.toString()),
       ),
-      body: GestureDetector(
-        onVerticalDragUpdate: (details) {
-          int sensitivity = 8;
-          if (details.delta.dy > sensitivity) {
-            print("dy swiped");
-            // Down Swipe
-          } else if(details.delta.dy < -sensitivity){
-            print("dy swiped -");
-          }
-        },
-        child: Container(
-          width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.height,
-
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      body: Stack(
+        children: [
+          Positioned(
+            left: touchCallbacks.taps.length == 3
+                ? touchCallbacks.taps.first.offset.dx
+                : 200,
+            top: touchCallbacks.taps.length == 3
+                ? touchCallbacks.taps.first.offset.dy
+                : 200,
+            child: Container(
+              height: 100,
+              width: 100,
+              color: Colors.red,
+            ),
+          ),
+          RawGestureDetector(
+            gestures: <Type, GestureRecognizerFactory>{
+              ImmediateMultiDragGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<
+                  ImmediateMultiDragGestureRecognizer>(
+                      () => ImmediateMultiDragGestureRecognizer(),
+                      (ImmediateMultiDragGestureRecognizer instance) {
+                    instance.onStart = (Offset offset) {
+                      setState(() {
+                        _counter++;
+                        touchCallbacks.touchBegan(TouchData(_counter, offset));
+                      });
+                      return ItemDrag((details, tId) {
+                        setState(() {
+                          touchCallbacks
+                              .touchMoved(TouchData(tId, details.globalPosition));
+                        });
+                      }, (details, tId) {
+                        touchCallbacks
+                            .touchEnded(TouchData(tId, const Offset(0, 0)));
+                      }, (tId) {
+                        touchCallbacks
+                            .touchCanceled(TouchData(tId, const Offset(0, 0)));
+                      }, _counter);
+                    };
+                  }),
+            },
+          ),
+        ],
       ),
     );
+  }
+}
+
+/// Just saving the taps information here
+class TouchCallbacks {
+  List<TouchData> taps = []; //list that holds ongoing taps or drags
+  void touchBegan(TouchData touch) {
+    taps.add(touch);
+    //touch began code here
+  }
+
+  void touchMoved(TouchData touch) {
+    for (int i = 0; i < taps.length; i++) {
+      if (taps[i].touchId == touch.touchId) {
+        taps[i] = touch;
+        break;
+      }
+    }
+    //touch moved code here
+  }
+
+  void touchCanceled(TouchData touch) {
+    //touch canceled code here
+    taps.removeWhere((element) => element.touchId == touch.touchId);
+  }
+
+  void touchEnded(TouchData touch) {
+    //touch ended code here
+    taps.removeWhere((element) => element.touchId == touch.touchId);
+  }
+}
+
+///Every touch point must have the touch id, here touch id will be every offset on the screen
+///until finger has not left i.e., until drag doesn't end.
+class TouchData {
+  final int touchId;
+  final Offset offset;
+
+  TouchData(this.touchId, this.offset);
+}
+
+class ItemDrag extends Drag {
+  final Function onUpdate;
+  final Function onEnd;
+  final Function onCancel;
+  final int touchId;
+
+  ItemDrag(this.onUpdate, this.onEnd, this.onCancel, this.touchId);
+
+  @override
+  void update(DragUpdateDetails details) {
+    super.update(details);
+    onUpdate(details, touchId);
+  }
+
+  @override
+  void end(DragEndDetails details) {
+    super.end(details);
+    onEnd(details, touchId);
+  }
+
+  @override
+  void cancel() {
+    super.cancel();
+    onCancel(touchId);
   }
 }
