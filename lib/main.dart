@@ -17,6 +17,8 @@ class GaugeApp extends StatelessWidget {
   }
 }
 
+
+
 class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -24,6 +26,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   double _rotationAngle = 0.0; // 현재 회전 각도
+  double _startAngle = 0.0; // 터치 시작 시 각도
   Offset _center = Offset.zero; // 컨테이너의 중심 좌표
 
   @override
@@ -35,18 +38,20 @@ class _MyHomePageState extends State<MyHomePage> {
           _center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
 
           return GestureDetector(
-            onPanUpdate: (details) {
-              // 사용자의 현재 터치 위치
+            onPanStart: (details) {
+              // 터치 시작 위치에서 각도를 계산
               final touchPosition = details.localPosition;
-
-              // 터치 위치에서 중심까지의 벡터 계산
               final vectorToTouch = touchPosition - _center;
-
-              // 회전 각도를 계산
+              _startAngle = atan2(vectorToTouch.dy, vectorToTouch.dx) - _rotationAngle;
+            },
+            onPanUpdate: (details) {
+              // 드래그 중일 때의 터치 위치에서 각도 계산
+              final touchPosition = details.localPosition;
+              final vectorToTouch = touchPosition - _center;
               final angle = atan2(vectorToTouch.dy, vectorToTouch.dx);
 
               setState(() {
-                _rotationAngle = angle; // 회전 각도 업데이트
+                _rotationAngle = angle - _startAngle; // 오프셋을 적용하여 회전 각도 설정
               });
             },
             child: Container(
