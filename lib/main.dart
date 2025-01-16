@@ -42,27 +42,31 @@ class _SwipeScreenState extends State<SwipeScreen> {
               MultiTouchGestureRecognizer>(
                 () => MultiTouchGestureRecognizer(),
                 (MultiTouchGestureRecognizer instance) {
-              instance.onUpdate = (positions) {
-                print("$instance instance");
-                print("$positions positions");
-                if (positions.length == 2) {
-                  firstFingerPosition = positions[0];
-                  secondFingerPosition = positions[1];
+                  instance.onUpdate = (positions) {
+                    debugPrint("Current active touches: $positions");
 
-                  final deltaX = secondFingerPosition.dx - firstFingerPosition.dx;
-                  final deltaY = secondFingerPosition.dy - firstFingerPosition.dy;
+                    if (positions.length == 2) {
+                      firstFingerPosition = positions[0];
+                      secondFingerPosition = positions[1];
 
-                  setState(() {
-                    if (deltaY.abs() > deltaX.abs()) {
-                      swipeDirection =
-                      deltaY > 0 ? "Two-Finger Swipe Down" : "Two-Finger Swipe Up";
-                    } else {
-                      swipeDirection =
-                      deltaX > 0 ? "Two-Finger Swipe Right" : "Two-Finger Swipe Left";
+                      final deltaX = secondFingerPosition.dx - firstFingerPosition.dx;
+                      final deltaY = secondFingerPosition.dy - firstFingerPosition.dy;
+
+                      debugPrint("Delta X: $deltaX, Delta Y: $deltaY");
+
+                      setState(() {
+                        if (deltaY.abs() > deltaX.abs()) {
+                          swipeDirection = deltaY > 0
+                              ? "Two-Finger Swipe Down"
+                              : "Two-Finger Swipe Up";
+                        } else {
+                          swipeDirection = deltaX > 0
+                              ? "Two-Finger Swipe Right"
+                              : "Two-Finger Swipe Left";
+                        }
+                      });
                     }
-                  });
-                }
-              };
+                  };
 
               instance.onEnd = () {
                 setState(() {
@@ -115,16 +119,19 @@ class MultiTouchGestureRecognizer extends OneSequenceGestureRecognizer {
   void handleEvent(PointerEvent event) {
     if (event is PointerMoveEvent) {
       activeTouches[event.pointer] = event.position;
+      debugPrint("Pointer ${event.pointer} moved to ${event.position}");
       if (onUpdate != null) {
         onUpdate!(activeTouches.values.toList());
       }
     } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      debugPrint("Pointer ${event.pointer} removed");
       activeTouches.remove(event.pointer);
       if (activeTouches.isEmpty && onEnd != null) {
         onEnd!();
       }
     }
   }
+
 
   @override
   String get debugDescription => 'MultiTouchGestureRecognizer';
