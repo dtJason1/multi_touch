@@ -1,141 +1,93 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+import 'dart:math';
 
 void main() {
-  runApp(const MyApp());
+  return runApp(GaugeApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
+/// Represents the GaugeApp class
+class GaugeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Two-Finger Swipe Detection',
+      title: 'Radial Gauge Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const SwipeScreen(),
+      home: MyHomePage(),
     );
   }
 }
 
-class SwipeScreen extends StatefulWidget {
-  const SwipeScreen({Key? key}) : super(key: key);
-
+class MyHomePage extends StatefulWidget {
   @override
-  State<SwipeScreen> createState() => _SwipeScreenState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _SwipeScreenState extends State<SwipeScreen> {
-  String swipeDirection = "No Swipe Detected";
-  Offset firstFingerPosition = Offset.zero;
-  Offset secondFingerPosition = Offset.zero;
+class _MyHomePageState extends State<MyHomePage> {
+  double _rotationAngle = 0.0; // 현재 회전 각도
+  Offset _center = Offset.zero; // 컨테이너의 중심 좌표
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Two-Finger Swipe Detection"),
-      ),
-      body: RawGestureDetector(
-        gestures: {
-          MultiTouchGestureRecognizer: GestureRecognizerFactoryWithHandlers<
-              MultiTouchGestureRecognizer>(
-                () => MultiTouchGestureRecognizer(),
-                (MultiTouchGestureRecognizer instance) {
-                  instance.onUpdate = (positions) {
-                    debugPrint("Current active touches: $positions");
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // 화면 크기에 따라 중심 좌표 계산
+          _center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
 
-                    if (positions.length == 2) {
-                      firstFingerPosition = positions[0];
-                      secondFingerPosition = positions[1];
+          return GestureDetector(
+            onPanUpdate: (details) {
+              // 사용자의 현재 터치 위치
+              final touchPosition = details.localPosition;
 
-                      final deltaX = secondFingerPosition.dx - firstFingerPosition.dx;
-                      final deltaY = secondFingerPosition.dy - firstFingerPosition.dy;
+              // 터치 위치에서 중심까지의 벡터 계산
+              final vectorToTouch = touchPosition - _center;
 
-                      debugPrint("Delta X: $deltaX, Delta Y: $deltaY");
+              // 회전 각도를 계산
+              final angle = atan2(vectorToTouch.dy, vectorToTouch.dx);
 
-                      setState(() {
-                        if (deltaY.abs() > deltaX.abs()) {
-                          swipeDirection = deltaY > 0
-                              ? "Two-Finger Swipe Down"
-                              : "Two-Finger Swipe Up";
-                        } else {
-                          swipeDirection = deltaX > 0
-                              ? "Two-Finger Swipe Right"
-                              : "Two-Finger Swipe Left";
-                        }
-                      });
-                    }
-                  };
-
-              instance.onEnd = () {
-                setState(() {
-                  swipeDirection = "No Swipe Detected";
-                });
-              };
+              setState(() {
+                _rotationAngle = angle; // 회전 각도 업데이트
+              });
             },
-          ),
-        },
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                swipeDirection,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                height: 300,
-                width: 300,
-                color: Colors.grey[300],
-                child: Center(
-                  child: const Text(
-                    "Use Two Fingers to Swipe",
-                    textAlign: TextAlign.center,
+            child: Container(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              color: Colors.black,
+              child: Center(
+                child: Transform.rotate(
+                  angle: _rotationAngle, // 회전 적용
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // 원형 컨테이너
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                      ),
+                      // 표시를 위한 상단 부분
+                      Positioned(
+                        top: 10, // 컨테이너의 상단 중앙
+                        child: Container(
+                          width: 10,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
-}
-
-class MultiTouchGestureRecognizer extends OneSequenceGestureRecognizer {
-  Function(List<Offset>)? onUpdate;
-  Function? onEnd;
-  final Map<int, Offset> activeTouches = {};
-
-  @override
-  void addAllowedPointer(PointerEvent event) {
-    startTrackingPointer(event.pointer);
-    activeTouches[event.pointer] = event.position;
-  }
-
-  @override
-  void handleEvent(PointerEvent event) {
-    if (event is PointerMoveEvent) {
-      activeTouches[event.pointer] = event.position;
-      debugPrint("Pointer ${event.pointer} moved to ${event.position}");
-      if (onUpdate != null) {
-        onUpdate!(activeTouches.values.toList());
-      }
-    } else if (event is PointerUpEvent || event is PointerCancelEvent) {
-      debugPrint("Pointer ${event.pointer} removed");
-      activeTouches.remove(event.pointer);
-      if (activeTouches.isEmpty && onEnd != null) {
-        onEnd!();
-      }
-    }
-  }
-
-
-  @override
-  String get debugDescription => 'MultiTouchGestureRecognizer';
-
-  @override
-  void didStopTrackingLastPointer(int pointer) {}
 }
